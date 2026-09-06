@@ -1,0 +1,25 @@
+# WolfPack NewsHound
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+
+# Runtime / generated data
+data/
+logs/
+backups/
+
+# Local configuration / secrets
+config/config.json
+.env
+.env.*
+*.key
+*.pem
+
+# Editor / OS junk
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

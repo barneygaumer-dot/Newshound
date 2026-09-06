@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WolfPack Market ISR — NewsHound</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="isr-header">
+  <div class="isr-airframe"><img src="/static/rq4-market-isr.png" alt="RQ-4 Global Hawk"></div>
+  <div class="isr-title">
+    <div class="isr-kicker"><span class="wolf">🐺</span> WOLFPACK</div>
+    <div class="isr-name">MARKET ISR</div>
+    <div class="isr-subtitle">MARKET INTELLIGENCE / EARLY WARNING <span>• NEWSHOUND</span></div>
+  </div>
+  <div class="ver">v{{version}}</div>
+</header>
+<main>
+<aside>
+  <section><h3>CONTROL / ADMIN</h3>
+    <div class="stat"><span id="runDot" class="dot"></span><b id="runState">STOPPED</b></div>
+    <div class="source">Benzinga <span id="bzState">—</span></div>
+    <div class="source">Finnhub <span id="fhState">—</span></div>
+    <div class="source">Alpha Vantage <span id="avState">—</span></div>
+    <div class="source">SEC <span id="secState">—</span></div>
+    <div class="source">Last event <span id="lastEvent">—</span></div>
+    <div class="buttons"><button onclick="post('/api/start')">START</button><button class="danger" onclick="post('/api/stop')">STOP</button></div>
+  </section>
+  <section><h3>MISSION WATCHLIST</h3>
+    <label>Tickers — all enabled sources<input id="watchTickers" placeholder="TSLA,NVDA,AVGO"></label>
+    <button onclick="saveWatchlist()">APPLY WATCHLIST</button><span id="watchState" class="test"></span>
+    <div class="hint">One watchlist drives Benzinga, Finnhub, Alpha Vantage, and SEC. SEC resolves ticker → CIK automatically.</div>
+  </section>
+  <section><h3>FEED FILTERS</h3>
+    <label>Source<select id="source"><option value="">ALL</option><option>BENZINGA</option><option>FINNHUB</option><option>ALPHAVANTAGE</option><option>SEC</option></select></label>
+    <label>Materiality<select id="importance"><option value="">ALL</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option></select></label>
+    <button onclick="refreshFeed()">APPLY</button>
+  </section>
+  <section><h3>ADMIN</h3>
+    <button onclick="openSetup()">SETUP</button>
+    <button onclick="location.href='/api/evidence/download'">EVIDENCE</button>
+  </section>
+  <div class="doctrine">SOURCE-FIRST WHEN POSSIBLE.<br>WIRE-FAST WHEN NECESSARY.<br><b>FIRST RELEVANT BYTE.</b></div>
+</aside>
+<section class="feedpane">
+  <div class="feedhead"><h2>LIVE INTELLIGENCE FEED</h2><div><span id="count">0 items</span> <button onclick="clearFeed()">CLEAR BOARD</button></div></div>
+  <div id="feed"></div>
+</section>
+</main>
+
+<div id="modal" class="modal hidden"><div class="modalbox">
+<div class="modalhead"><h2>NewsHound Setup</h2><button onclick="closeSetup()">×</button></div>
+<div class="tabs"><button onclick="tab('sources')">SOURCES</button><button onclick="tab('update')">UPDATE</button></div>
+<div id="sourcesTab">
+  <h3>Benzinga</h3>
+  <label class="check"><input type="checkbox" id="bzEnabled"> Enable Benzinga real-time news</label>
+  <label>API Key<input type="password" id="bzKey" placeholder="Leave blank to preserve saved key"></label>
+  <div class="hint">Ticker scope is controlled by the main-page Mission Watchlist.</div>
+  <button onclick="testBz()">TEST CONNECTION</button><span id="bzTest" class="test"></span>
+  <hr>
+
+  <h3>Finnhub Free Company News</h3>
+  <label class="check"><input type="checkbox" id="fhEnabled"> Enable Finnhub company-news watcher</label>
+  <label>API Key<input type="password" id="fhKey" placeholder="Leave blank to preserve saved key"></label>
+  <div class="hint">Ticker scope is controlled by the main-page Mission Watchlist.</div>
+  <label>Poll seconds<input type="number" min="15" max="300" step="5" id="fhPoll"></label>
+  <button onclick="testFh()">TEST CONNECTION</button><span id="fhTest" class="test"></span>
+  <hr>
+
+  <h3>Alpha Vantage Free News &amp; Sentiment</h3>
+  <label class="check"><input type="checkbox" id="avEnabled"> Enable Alpha Vantage news watcher</label>
+  <label>API Key<input type="password" id="avKey" placeholder="Leave blank to preserve saved key"></label>
+  <div class="hint">Ticker scope is controlled by the main-page Mission Watchlist.</div>
+  <label>Poll minutes<input type="number" min="60" max="1440" step="15" id="avPoll"></label>
+  <div class="hint">NewsHound polls the broad NEWS_SENTIMENT feed once, then keeps stories matching these tickers. Default 60 minutes is intentionally conservative for free-tier quotas.</div>
+  <button onclick="testAv()">TEST CONNECTION</button><span id="avTest" class="test"></span>
+  <hr>
+
+  <h3>SEC EDGAR Primary Source</h3>
+  <label class="check"><input type="checkbox" id="secEnabled"> Enable SEC watcher</label>
+  <div class="hint">No CIK entry required. NewsHound resolves selected watchlist tickers through the SEC company ticker map.</div>
+  <label>Declared User-Agent<input id="secUA" placeholder="NewsHound/1.3-hf1 you@example.com"></label>
+  <label>Poll seconds<input type="number" min="1" max="60" step=".5" id="pollSeconds"></label>
+  <button onclick="testSec()">TEST CONNECTION</button><span id="secTest" class="test"></span>
+  <hr>
+
+  <label>Maximum live feed items<input type="number" min="25" max="500" id="feedLimit"></label>
+  <div class="save"><button onclick="saveSetup()">SAVE &amp; RESTART SOURCES</button></div>
+</div>
+<div id="updateTab" class="hidden">
+  <h3>Install / Update from ZIP</h3>
+  <p>Configuration, credentials, evidence, logs and backups are preserved. Package paths are validated before install.</p>
+  <input type="file" id="updateFile" accept=".zip">
+  <button onclick="uploadUpdate()">INSTALL UPDATE</button>
+  <pre id="updateResult"></pre>
+</div>
+</div></div>
+<script src="/static/app.js"></script>
+</body></html>
