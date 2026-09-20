@@ -1,285 +1,490 @@
-# 🐺 WolfPack Market ISR — NewsHound
+# 🐺 WolfPack NewsHound
 
-<p align="center">
-  <img src="newshound/static/rq4-market-isr.png" alt="WolfPack Market ISR RQ-4" width="700">
-</p>
+> **Source-first market intelligence. Evidence before narrative. Human authority retained.**
 
-<p align="center">
-  <strong>MARKET INTELLIGENCE • EARLY WARNING • TARGET DEVELOPMENT</strong>
-</p>
+NewsHound is the strategic market-intelligence / ISR component of the WolfPack suite.
 
-<p align="center">
-  <em>ISR finds 'em. Reaper stalks 'em. Evidence calls the shot.</em>
-</p>
+It collects market-moving information from multiple providers, preserves the evidence, classifies what matters, and gives the operator a deliberate AI-assisted workflow for developing a defensible market thesis.
 
----
+NewsHound does **not** execute trades.
 
-## Mission
+Its job is intelligence.
 
-**NewsHound** is the market-intelligence and early-warning component of **WolfPack Market ISR**.
-
-Its job is not to trade. Its job is to **watch the battlespace**.
-
-NewsHound collects market-relevant intelligence from multiple sources, associates that intelligence with the active ticker watchlist, preserves supporting evidence, and surfaces emerging activity for analysis and downstream target development.
-
-> **Turn the market information firehose into a smaller set of evidence-supported targets worth investigating.**
-
-```text
-        MARKET BATTLESPACE
-                |
-                v
-      +-------------------+
-      |     NEWSHOUND     |
-      | Market ISR / EW   |
-      +---------+---------+
-                |
-        Intelligence
-         + Evidence
-                |
-                v
-      +-------------------+
-      | TARGET DEVELOPMENT|
-      | Rank / Qualify    |
-      +---------+---------+
-                |
-         Target Package
-                |
-                v
-      +-------------------+
-      |   MARKET REAPER   |
-      | Engagement Logic  |
-      +-------------------+
-```
-
-**NewsHound discovers. Market Reaper decides.**
-
-Sometimes the correct target list is empty.
+**Collect the evidence. Designate what matters. Develop the thesis. Preserve the intelligence. Keep the human in command.**
 
 ---
 
-## Current Release — v1.3-hf5
+## Why NewsHound Exists
 
-NewsHound provides source-aware watchlist collection, persistent evidence, provider health/status visibility, and the WolfPack Market ISR operating picture.
+Markets produce an enormous amount of information.
 
-### Intelligence Sources
+Most of it is noise.
 
-| Source | Collection Model | Mission |
-| --- | --- | --- |
-| **Benzinga** | Multi-ticker WebSocket | Low-latency watchlist news |
-| **Finnhub** | Per-ticker polling | Company-specific news |
-| **Alpha Vantage** | Per-ticker `NEWS_SENTIMENT` | News and sentiment intelligence |
-| **SEC EDGAR** | Per-ticker / CIK polling | Primary-source regulatory filings |
+NewsHound is designed to help answer a more useful set of questions:
 
-Each provider is collected according to its actual API semantics rather than forcing every source into a common polling model.
+- What actually happened?
+- What is genuinely new?
+- What did the market probably expect?
+- What changed relative to that expectation?
+- How could that change affect the business or security?
+- Is the information economically material?
+- Is the effect likely transient or durable?
+- What evidence supports the thesis?
+- What evidence contradicts it?
+- What would invalidate it?
+- What should PRICE do if the thesis is correct?
 
----
+The objective is not to have AI pronounce something *good* or *bad*.
 
-## Source-Aware Collection
-
-### Benzinga
-Benzinga supports a multi-ticker watchlist stream. NewsHound uses a single multi-symbol **shotgun collection** model for the active watchlist.
-
-### Finnhub
-Finnhub company news is queried one symbol at a time. NewsHound walks the watchlist ticker-by-ticker, isolates individual symbol failures, and reports progress across the collection sweep.
-
-### Alpha Vantage
-Alpha Vantage `NEWS_SENTIMENT` multi-ticker queries are not treated as a simple OR-style watchlist. NewsHound polls each ticker independently and requires provider ticker attribution before assigning an article to the queried symbol. Provider rate or subscription limitations are surfaced through source status rather than silently discarded.
-
-### SEC EDGAR
-SEC collection resolves the appropriate company identifier and polls filings independently for each configured ticker, providing a primary-source intelligence channel independent of commercial news providers.
+The objective is to turn preserved evidence into an inspectable working thesis.
 
 ---
 
-## Evidence Engineering
+## Operating Picture
 
-NewsHound follows the WolfPack principle:
-
-> **If it influenced the decision, preserve the evidence.**
-
-Collected intelligence can be persisted locally for later review, analysis, troubleshooting, and after-action reconstruction.
-
-Runtime evidence:
+NewsHound follows a simple intelligence lifecycle:
 
 ```text
-data/evidence/
+COLLECT
+   ↓
+PRESERVE
+   ↓
+CLASSIFY
+   ↓
+DISPLAY
+   ↓
+OPERATOR DESIGNATION
+   ↓
+AI THESIS
+   ↓
+FINISHED INTELLIGENCE
 ```
 
-Current live-board state:
+Collectors gather evidence independently.
 
-```text
-data/live-feed.json
-```
+NewsHound preserves what was received before downstream interpretation wherever practical. Classification and display logic operate on that evidence without redefining what the collector was allowed to see.
 
-NewsHound records source publication timestamps when supplied and its own receipt timestamps, providing a foundation for source-latency analysis.
+The operator decides which story deserves deeper exploitation.
 
-Runtime evidence and live state are intentionally excluded from the public repository.
+AI assists with reasoning.
+
+The operator retains authority.
 
 ---
 
-## Security
+## Core Features
 
-API credentials are **not stored in the public source tree**.
+- Multi-source market-news collection
+- SEC filing awareness
+- Source-first evidence preservation
+- Importance and category classification
+- Ticker/watchlist filtering
+- Provider-specific configuration
+- Benzinga streaming support
+- Benzinga reconnect throttling and exponential backoff
+- Finnhub collection
+- Alpha Vantage collection
+- SEC collection
+- Operator-designated AI Thesis analysis
+- Web-assisted evidence retrieval when configured
+- Thesis caching and deliberate reanalysis
+- Evidence/provenance receipts
+- Persistent finished-intelligence report archive
+- Human-readable PDF reports
+- Structured JSON report artifacts
+- Saved-report retrieval and deletion
+- Local browser-based operator interface
+- Human authority over every analytical conclusion
 
-Local configuration is maintained in:
+---
+
+## AI Thesis
+
+AI Thesis is an operator-designated analytical workflow.
+
+NewsHound does **not** automatically spend AI resources analyzing every incoming story. The operator selects evidence that appears worthy of exploitation and explicitly requests analysis.
+
+The analytical framework asks:
+
+1. **What happened?**
+2. **What is actually new?**
+3. **What did the market expect?**
+4. **What changed relative to expectation?**
+5. **What is the economic transmission mechanism?**
+6. **How material is the change?**
+7. **What is the likely time horizon?**
+8. **How durable is the effect?**
+9. **How strong is the evidence?**
+10. **Who else may be affected?**
+11. **What is the counter-thesis?**
+12. **What would invalidate the thesis?**
+13. **What should PRICE do if the thesis is correct?**
+14. **What is the resulting working thesis?**
+
+AI Thesis can also expose analytical metadata such as:
+
+- Bias
+- Horizon
+- Novelty
+- Evidence Quality
+- Thesis State
+- Confidence
+- What to Watch
+
+A thesis is not a trade order.
+
+It is an analytical product to be tested against evidence and subsequent market behavior.
+
+**PRICE grades the thesis.**
+
+---
+
+## Evidence Philosophy
+
+NewsHound is built around evidence engineering.
+
+When deeper analysis is requested, the system can use available provider content, canonical story URLs, public web evidence, SEC material, and other accessible corroborating sources.
+
+If source content cannot be retrieved, that limitation should remain visible rather than being silently replaced with invented certainty.
+
+Useful provenance can include:
+
+- Story ID
+- Original URL
+- Publisher/source
+- Ticker or entity context
+- Publication timestamp
+- Receipt timestamp
+- Analysis timestamp
+- Retrieval/source-access path
+- Evidence URLs
+- Model information
+- Working thesis
+- Counter-thesis
+- Invalidation criteria
+
+The goal is simple:
+
+> **Preserve enough evidence to understand later why the system believed what it believed.**
+
+---
+
+## AI Thesis Report Archive
+
+Beginning with **v1.3-hf14**, an operator can promote a useful AI Thesis into persistent finished intelligence.
+
+Reports are stored beneath:
 
 ```text
-config/config.json
+reports/YYYY/MM/
 ```
 
-Secrets are stored server-side and are not returned to the browser after save. The repository `.gitignore` excludes local configuration, runtime data, logs, backups, virtual environments, environment files, and common credential/key files, including:
+Each archived report consists of paired artifacts:
+
+- **PDF** — human-readable finished intelligence product.
+- **JSON** — structured evidence and provenance receipt.
+
+The UI provides:
+
+- **SAVE REPORT**
+- **EXPORT PDF**
+- **Saved Reports**
+- PDF retrieval
+- JSON retrieval
+- Operator-controlled deletion
+
+Working analytical evidence and finished intelligence remain intentionally separate:
 
 ```text
-config/config.json
-data/
-logs/
-backups/
-venv/
-.env
-.env.*
-*.key
-*.pem
+data/theses/     working / cached analytical evidence
+reports/         operator-designated finished intelligence
 ```
 
-Default source configuration contains empty API-key values.
+That separation is deliberate.
 
-> **Never commit provider API keys, authentication tokens, credentials, or private evidence to the repository.**
+Not every transient analysis deserves permanent promotion. The operator decides what becomes finished intelligence.
+
+This archive also creates a foundation for future after-action review: historical theses can be compared against subsequent PRICE behavior to evaluate what the analysis got right, what it missed, and why.
 
 ---
 
 ## Installation
 
-NewsHound currently targets Ubuntu/Linux with Python 3.
+NewsHound is designed for Linux with Python 3 and systemd.
+
+A typical installation location is:
+
+```text
+/opt/wolfpack/newshound
+```
+
+From an unpacked release:
 
 ```bash
-git clone https://github.com/barneygaumer-dot/Newshound.git
-cd Newshound
 chmod +x install.sh
 ./install.sh
 ```
 
-Default application port: **8091**
+The installer creates the application environment and supporting service configuration required by NewsHound.
 
-Local UI:
+The default local UI is:
 
 ```text
 http://127.0.0.1:8091
 ```
 
-LAN access uses the NewsHound host's IP address on TCP port **8091**.
+Useful service commands:
+
+```bash
+sudo systemctl status newshound --no-pager
+sudo systemctl restart newshound
+sudo journalctl -u newshound -f
+```
+
+For complete installation and operating instructions, see [`HOWTO.md`](HOWTO.md).
+
+---
+
+## Upgrade
+
+NewsHound includes an upgrade script:
+
+```bash
+chmod +x upgrade-to-1.0.sh
+./upgrade-to-1.0.sh
+```
+
+The updater preserves persistent runtime material such as configuration, data, logs, backups, reports, and the existing virtual environment while deploying the release files.
+
+### Dependency changes
+
+Because the virtual environment is preserved, a release that changes `requirements.txt` may require the installed environment to be synchronized manually.
+
+For v1.3-hf14:
+
+```bash
+cd /opt/wolfpack/newshound
+./.venv/bin/pip install -r requirements.txt
+sudo systemctl restart newshound
+sudo systemctl status newshound --no-pager
+```
+
+v1.3-hf14 adds **ReportLab** for PDF report generation.
+
+Automated dependency preflight and environment synchronization are intentionally deferred to separately tested maintenance work rather than being introduced as an untested change to the known-good hf14 release.
+
+See [`HOWTO.md`](HOWTO.md) and [`RELEASE-NOTES-1.3-hf14.md`](RELEASE-NOTES-1.3-hf14.md) for additional upgrade information.
 
 ---
 
 ## Configuration
 
-Provider configuration is performed locally through the NewsHound **SETUP** interface.
+Use **SETUP** in the NewsHound UI to configure enabled providers, API credentials, watchlist behavior, and provider-specific options.
 
-Currently supported intelligence providers:
+AI Thesis requires an OpenAI API key and configured model.
 
-- Benzinga
-- Finnhub
-- Alpha Vantage
-- SEC EDGAR
+Credentials are intended to remain local and server-side.
 
-The configured ticker watchlist defines the portion of the market battlespace NewsHound is tasked to observe.
+**Never commit credentials, API keys, local configuration, or runtime evidence to source control.**
 
-Provider availability, polling limits, subscription requirements, and rate limits remain subject to each intelligence provider.
+Provider access, entitlements, rate limits, and API behavior remain subject to the respective third-party provider.
 
 ---
 
-## ISR Operating Concept
-
-NewsHound follows a simple intelligence cycle:
-
-**Observe → Collect → Correlate → Preserve → Assess → Nominate**
-
-The system is intended to help answer:
-
-- What changed?
-- Which ticker is affected?
-- How fresh is the intelligence?
-- Which sources support the observation?
-- Is the information primary-source or secondary reporting?
-- Is the event material enough to warrant deeper analysis?
-- What evidence supports the resulting target nomination?
-
-News volume alone does not equal intelligence. A ticker producing large quantities of weak information should not automatically outrank a ticker with one highly material, well-supported event.
-
----
-
-## Design Principles
-
-**Evidence over intuition** — Important observations should remain traceable to supporting evidence.
-
-**Source awareness** — Each intelligence provider is queried according to its actual API behavior.
-
-**Freshness matters** — Old intelligence should not masquerade as a new event.
-
-**Failure isolation** — A failure involving one ticker or provider should not unnecessarily abort the rest of the collection mission.
-
-**Human authority** — NewsHound provides intelligence and decision support. It does not autonomously execute securities trades.
-
-**Capital preservation** — The system is explicitly allowed to determine that nothing currently deserves engagement.
-
-> **No target is better than a bad target.**
-
----
-
-## Project Structure
+## Project Layout
 
 ```text
-Newshound/
-├── newshound/
-│   ├── app.py
-│   ├── classify.py
-│   ├── config.py
-│   ├── sources.py
-│   ├── store.py
-│   ├── static/
-│   │   ├── app.js
-│   │   ├── rq4-market-isr.png
-│   │   └── style.css
-│   └── templates/
-│       └── index.html
-├── install.sh
-├── requirements.txt
+newshound/
 ├── run.py
+├── requirements.txt
 ├── VERSION
-└── README.md
+├── install.sh
+├── upgrade-to-1.0.sh
+├── LICENSE
+├── DISCLAIMER.md
+├── README.md
+├── HOWTO.md
+├── RELEASE-NOTES-1.3-hf14.md
+├── config/
+└── newshound/
+    ├── __init__.py
+    ├── app.py          # Flask/API surface
+    ├── classify.py     # importance/category classification
+    ├── config.py       # application configuration
+    ├── reports.py      # finished-intelligence report archive
+    ├── sources.py      # provider collectors
+    ├── store.py        # evidence/feed persistence
+    ├── thesis.py       # AI Thesis analysis
+    ├── static/
+    └── templates/
+```
+
+Runtime/generated material such as the following should remain outside source control:
+
+```text
+data/
+logs/
+backups/
+reports/
+.venv/
+venv/
+credentials.json
 ```
 
 ---
 
-## v1.3-hf5 Highlights
+## Architecture in the WolfPack Suite
 
-- Source-aware market-news collection
-- Benzinga multi-ticker watchlist streaming
-- Finnhub per-symbol collection sweeps
-- Alpha Vantage per-symbol `NEWS_SENTIMENT` collection
-- Per-symbol collection failure isolation
-- Provider collection-progress visibility
-- Alpha Vantage rate/plan status detection
-- SEC EDGAR primary-source collection
-- Persistent evidence capture and live intelligence board
-- WolfPack Market ISR RQ-4 visual refresh
+NewsHound is one component of a larger evidence-driven market-intelligence architecture.
+
+```text
+MARKET BATTLESPACE
+        │
+        ▼
+┌─────────────────────┐
+│      NEWSHOUND      │
+│   Strategic ISR     │
+│                     │
+│ What happened?      │
+│ Why might it matter?│
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ ISR MARKET SCANNER  │
+│      "AWACS"        │
+│                     │
+│ What is moving?     │
+│ Where is opportunity│
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│    MARKET REAPER    │
+│ Tactical Analysis   │
+│                     │
+│ Is there a qualified│
+│ engagement now?     │
+└──────────┬──────────┘
+           │
+           ▼
+      HUMAN AUTHORITY
+```
+
+The operating doctrine:
+
+> **RQ-4 hears why. AWACS sees what. Reaper determines when.**
+
+NewsHound develops strategic intelligence.
+
+The ISR Market Scanner surveys the wider market for technical opportunity.
+
+Market Reaper evaluates tactical conditions.
+
+The human operator retains decision authority.
 
 ---
 
-## Scope
+## Provider Behavior
 
-NewsHound is an intelligence collection and early-warning service. It does not autonomously trade securities. Market analysis and any engagement decision remain separate downstream functions.
+NewsHound's collectors are intentionally independent.
+
+Failure, throttling, or loss of entitlement at one provider should not redefine the evidence received from another provider.
+
+### Benzinga
+
+Benzinga streaming support includes reconnect throttling with exponential backoff and jitter.
+
+HTTP/API conditions matter:
+
+- **401** generally indicates an authentication or entitlement problem.
+- **429** indicates provider throttling/rate limiting.
+
+NewsHound responds to throttling by backing off rather than hammering the provider with aggressive reconnect attempts.
+
+Benzinga is optional. Provider access may require an appropriate subscription or entitlement.
+
+### Other Sources
+
+NewsHound also supports collection paths for sources including:
+
+- Finnhub
+- Alpha Vantage
+- SEC
+
+Provider behavior, availability, limits, licensing, and terms remain controlled by those providers.
 
 ---
 
-## Disclaimer
+## Built by Curiosity
 
-WolfPack Market ISR / NewsHound is research and decision-support software. It does not provide investment advice and does not guarantee the accuracy, completeness, timeliness, or profitability of information obtained from external providers.
+NewsHound is a WolfPack project from **W6 + Kato**: operator mission intent meeting rapid engineering.
 
-Trading and investing involve risk. Any trading or investment decision remains the responsibility of the operator.
+The operating philosophy is straightforward:
+
+- Build useful tools for regular folks.
+- Prefer primary sources and preserved evidence over vibes.
+- Let AI reason, but make its work inspectable.
+- Keep the human in command.
+- When something breaks, lift the hood and get receipts.
+- Coolness is not optional.
+
+**Semper Tools For Regular Folks. Semper Receipts. Semper Cool Shit. Semper Homies.** 🐺
 
 ---
 
-## WolfPack
+## License, AI Risk, and Financial Disclaimer
 
-Built as part of the **WolfPack evidence-engineering ecosystem**.
+NewsHound is released under the **MIT License**. Read [`LICENSE`](LICENSE) before use.
 
-**Semper ISR. Semper Evidence. 🐺**
+**AI Thesis is experimental and can be wrong.** AI output may be incomplete, stale, inaccurate, misleading, or fabricated.
+
+NewsHound is not a broker or investment adviser and does not provide financial, legal, tax, accounting, or compliance advice. Nothing produced by NewsHound is a recommendation or instruction to buy, sell, hold, or otherwise transact in any security, digital asset, or other financial instrument.
+
+Financial markets involve risk, including possible loss of principal.
+
+Users are responsible for:
+
+- Independently verifying evidence and analytical conclusions
+- Their own trading and investment decisions
+- Protecting API credentials
+- Compliance with applicable laws and regulations
+- Compliance with third-party provider terms and licensing
+
+See [`DISCLAIMER.md`](DISCLAIMER.md) for the complete AI, financial-market, third-party-data, evidence, and operator-responsibility notice.
+
+**Use AI Thesis and NewsHound at your own risk.**
+
+---
+
+## Current Release — v1.3-hf14
+
+### AI Thesis Report Archive
+
+v1.3-hf14 adds persistent, operator-designated finished intelligence to the AI Thesis workflow.
+
+A useful live analysis can now be promoted into paired PDF and JSON artifacts beneath:
+
+```text
+reports/YYYY/MM/
+```
+
+The PDF provides the human-readable finished intelligence product.
+
+The JSON artifact provides the structured analytical and provenance receipt.
+
+The **Saved Reports** interface provides retrieval and management of archived intelligence, while **EXPORT PDF** can archive and immediately produce the human-readable report.
+
+v1.3-hf14 also adds ReportLab as the PDF-generation dependency. Existing installations upgrading across this dependency change must synchronize their preserved Python virtual environment with the current `requirements.txt`.
+
+For complete release information, see [`RELEASE-NOTES-1.3-hf14.md`](RELEASE-NOTES-1.3-hf14.md).
+
+---
+
+## WolfPack Doctrine
+
+**AI RECOMMENDS • EVIDENCE SUBSTANTIATES • W6 AUTHORIZES**
+
+**PRICE grades the thesis. Human authority is retained.**
+
+**Semper Preserve The Damn Intelligence. Semper Receipts. Semper Build Cool Shit.** 🐺

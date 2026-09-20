@@ -3,6 +3,51 @@ from datetime import datetime, timezone
 import hashlib, json, threading
 from .config import DATA_DIR, ensure_dirs, load_config
 
+# Optional operator-display language classification.  This is deliberately
+# downstream of collection/evidence persistence: no language decision can
+# prevent a Benzinga frame from being ingested or preserved.
+try:
+    from langdetect import detect_langs, DetectorFactory
+    DetectorFactory.seed = 0
+except Exception:
+    detect_langs = None
+
+def _benzinga_visible_to_operator(event, cfg):
+    if str(event.get("source", "")).upper() != "BENZINGA":
+        return True
+    if str(cfg.get("benzinga_language_pref", "english")).lower() == "all":
+        return True
+
+    # Benzinga sometimes identifies translated wires in content.type.
+    # Keep this conservative and then use text classification as a second pass.
+    ctype = str(event.get("content_type", "") or "").lower()
+    non_english_type_markers = (
+        "espanol", "spanish", "francais", "french", "deutsch", "german",
+        "italiano", "italian", "portugues", "portuguese", "turkish", "turkce",
+        "japanese", "korean", "chinese", "arabic", "indonesian",
+    )
+    if any(marker in ctype for marker in non_english_type_markers):
+        return False
+
+    # Fail open.  Short/ambiguous stories and detector failures remain visible.
+    # Only strong non-English classifications are hidden from the operator board.
+    if detect_langs is None:
+        return True
+    text = f"{event.get('title','')} {event.get('summary','')}".strip()
+    alpha_count = sum(ch.isalpha() for ch in text)
+    if alpha_count < 30:
+        return True
+    try:
+        guesses = detect_langs(text[:1400])
+        if not guesses:
+            return True
+        top = guesses[0]
+        if getattr(top, "lang", "") == "en":
+            return True
+        return float(getattr(top, "prob", 0.0)) < 0.90
+    except Exception:
+        return True
+
 _lock = threading.RLock()
 _feed = deque(maxlen=500)
 _seen = set()
@@ -129,6 +174,7 @@ def trim_feed():
 
 def get_feed(limit=100, ticker="", source="", importance=""):
     _ensure_loaded()
+    cfg = load_config()
     ticker = ticker.upper().strip()
     source = source.upper().strip()
     importance = importance.upper().strip()
@@ -136,6 +182,8 @@ def get_feed(limit=100, ticker="", source="", importance=""):
         items = list(_feed)
     out = []
     for e in items:
+        if not _benzinga_visible_to_operator(e, cfg):
+            continue
         tickers = [str(x).upper() for x in e.get("tickers", [])]
         if ticker and ticker not in tickers: continue
         if source and str(e.get("source","")).upper() != source: continue
@@ -143,3 +191,13 @@ def get_feed(limit=100, ticker="", source="", importance=""):
         out.append(e)
         if len(out) >= limit: break
     return out
+
+
+def get_event(evidence_id):
+    _ensure_loaded()
+    target = str(evidence_id or "").strip()
+    with _lock:
+        for e in _feed:
+            if str(e.get("evidence_id", "")) == target:
+                return dict(e)
+    return None

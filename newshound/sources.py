@@ -1,4 +1,4 @@
-import json, threading, time
+import json, threading, time, random
 from datetime import datetime, timezone, timedelta
 import requests
 import websocket
@@ -6,6 +6,7 @@ import websocket
 from .config import load_config
 from .store import add_event, set_status
 from .classify import infer_importance, category
+import urllib.parse
 
 
 def _tickers(value):
@@ -65,14 +66,16 @@ class SourceManager:
         cfg = load_config()
         watch = _tickers(cfg.get("watch_tickers"))
 
-        if cfg.get("benzinga_enabled") and cfg.get("benzinga_api_key") and watch:
+        # Benzinga is the one source exempt from watchlist gating.  Its
+        # WebSocket endpoint delivers correctly when connected without the
+        # server-side ticker query, so NewsHound consumes the entitled full
+        # stream and preserves Benzinga's own ticker attribution.
+        if cfg.get("benzinga_enabled") and cfg.get("benzinga_api_key"):
             self._launch(self._benzinga_loop, "benzinga-ws")
         elif not cfg.get("benzinga_enabled"):
             set_status(benzinga="DISABLED")
-        elif not cfg.get("benzinga_api_key"):
-            set_status(benzinga="NO KEY")
         else:
-            set_status(benzinga="NO WATCHLIST")
+            set_status(benzinga="NO KEY")
 
         if cfg.get("finnhub_enabled") and cfg.get("finnhub_api_key") and watch:
             self._launch(self._finnhub_loop, "finnhub-poll")
@@ -136,22 +139,30 @@ class SourceManager:
         self.start()
 
     def _benzinga_loop(self, generation):
+        # WebSocket reconnect discipline: do not hammer an upstream service that
+        # is throttling or temporarily unavailable.  Backoff resets only after a
+        # successful socket open.  This is deliberately isolated to Benzinga.
+        failures = 0
+        backoff_steps = (15, 30, 60, 120, 300)
         while not self.stop_event.is_set() and generation == self.generation:
             cfg = load_config()
             key = cfg.get("benzinga_api_key", "").strip()
-            tickers = ",".join(_tickers(cfg.get("watch_tickers")))
             if not key:
                 set_status(benzinga="NO KEY"); return
-            if not tickers:
-                set_status(benzinga="NO WATCHLIST"); return
-            url = f"wss://api.benzinga.com/api/v1/news/stream?token={key}&tickers={requests.utils.quote(tickers, safe=',')}"
+            url = (
+                "wss://api.benzinga.com/api/v1/news/stream"
+                f"?token={urllib.parse.quote(key)}"
+            )
+            opened = {"ok": False}
+            last_ws_error = {"text": "", "throttled": False}
             try:
                 set_status(benzinga="CONNECTING")
                 def current_generation():
                     return generation == self.generation and not self.stop_event.is_set()
                 def on_open(ws):
+                    opened["ok"] = True
                     if current_generation():
-                        set_status(benzinga="CONNECTED")
+                        set_status(benzinga="CONNECTED / FULL STREAM")
                 def on_message(ws, message):
                     if not current_generation():
                         return
@@ -159,7 +170,8 @@ class SourceManager:
                         envelope = json.loads(message)
                         data = envelope.get("data", {})
                         content = data.get("content", {}) or {}
-                        if data.get("action") == "deleted": return
+                        action = str(data.get("action") or "created").strip().lower()
+                        if action == "deleted": return
                         stocks = content.get("stocks") or []
                         syms = [s.get("name") for s in stocks if isinstance(s, dict) and s.get("name")]
                         title = content.get("title", "")
@@ -167,16 +179,24 @@ class SourceManager:
                                    "published_at":content.get("created") or data.get("timestamp"),"updated_at":content.get("updated"),
                                    "title":title,"summary":content.get("teaser", ""),"url":content.get("url", ""),"author":content.get("author", ""),
                                    "tickers":syms,"importance":infer_importance(title, content.get("importance")),"category":category(title, content.get("tags")),
-                                   "action":data.get("action", "created")})
+                                   "action":action,"content_type":content.get("type", "")})
                     except Exception as e:
                         if current_generation():
                             set_status(benzinga=f"PARSE ERROR: {type(e).__name__}")
                 def on_error(ws, err):
                     if current_generation():
-                        set_status(benzinga=f"ERROR: {str(err)[:80]}")
+                        err_text = str(err).replace(key, "[REDACTED]")[:240]
+                        last_ws_error["text"] = err_text
+                        last_ws_error["throttled"] = "429" in err_text or "too many requests" in err_text.lower()
+                        print(f"[BENZINGA] WebSocket error: {err_text}", flush=True)
+                        set_status(benzinga=f"ERROR: {err_text[:120]}")
                 def on_close(ws, code, msg):
                     if current_generation():
-                        set_status(benzinga=f"RECONNECTING ({code or '-'})")
+                        close_msg = str(msg or "").replace(key, "[REDACTED]")[:160]
+                        if last_ws_error["text"]:
+                            print(f"[BENZINGA] WebSocket closed: code={code or '-'} msg={close_msg or '-'}; backoff scheduled", flush=True)
+                        else:
+                            print(f"[BENZINGA] WebSocket closed: code={code or '-'} msg={close_msg or '-'}; backoff scheduled", flush=True)
                 ws = websocket.WebSocketApp(url, on_open=on_open, on_message=on_message, on_error=on_error, on_close=on_close)
                 with self._benzinga_ws_lock:
                     self._benzinga_ws = ws
@@ -187,8 +207,28 @@ class SourceManager:
                         if self._benzinga_ws is ws:
                             self._benzinga_ws = None
             except Exception as e:
-                set_status(benzinga=f"ERROR: {type(e).__name__}")
-            self.stop_event.wait(3)
+                last_ws_error["text"] = f"{type(e).__name__}: {str(e)[:180]}"
+                print(f"[BENZINGA] WebSocket exception: {last_ws_error['text']}", flush=True)
+
+            if not current_generation():
+                break
+            if opened["ok"]:
+                failures = 0
+            else:
+                failures += 1
+            base = backoff_steps[min(max(failures - 1, 0), len(backoff_steps) - 1)]
+            # Small jitter avoids synchronized reconnect storms while keeping the
+            # operator-visible retry interval understandable.
+            delay = max(5, int(round(base * random.uniform(0.90, 1.10))))
+            if last_ws_error["throttled"]:
+                state = f"THROTTLED (429) — RETRY IN {delay}s"
+            elif last_ws_error["text"]:
+                state = f"RECONNECT BACKOFF — RETRY IN {delay}s"
+            else:
+                state = f"DISCONNECTED — RETRY IN {delay}s"
+            set_status(benzinga=state)
+            print(f"[BENZINGA] {state}; failure_count={failures}", flush=True)
+            self.stop_event.wait(delay)
 
     def _finnhub_loop(self, generation):
         """Poll Finnhub one symbol at a time.
@@ -397,7 +437,7 @@ class SourceManager:
                         add_event({"source":"SEC","source_type":"PRIMARY","source_id":acc,
                                    "published_at":accepted[i] if i < len(accepted) else (dates[i] if i < len(dates) else ""),
                                    "title":title,"summary":f"{name} filed Form {form} with the SEC.","url":url,"tickers":[wanted_ticker],
-                                   "importance":infer_importance(title),"category":category(title, form=form)})
+                                   "importance":"ALERT","category":category(title, form=form)})
                         baseline.add(acc)
                     self.sec_seen[cik] = set(accessions[:50]); time.sleep(.12)
                 set_status(sec="CONNECTED" + (f" / MISS {','.join(missing[:3])}" if missing else ""))

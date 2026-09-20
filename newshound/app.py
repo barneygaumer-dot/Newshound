@@ -5,8 +5,10 @@ import os, subprocess, tempfile, zipfile, requests
 
 from . import __version__
 from .config import BASE, DATA_DIR, load_config, save_config, public_config, ensure_dirs
-from .store import status, get_feed, clear_feed, trim_feed
+from .store import status, get_feed, clear_feed, trim_feed, get_event
 from .sources import SourceManager, _tickers
+from .thesis import analyze_event, get_cached
+from .reports import save_report, list_reports, find_report, delete_report
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 200 * 1024 * 1024
@@ -64,6 +66,7 @@ def api_save_setup():
     p = request.get_json(force=True) or {}
     updates = {
         "benzinga_enabled": bool(p.get("benzinga_enabled")),
+        "benzinga_language_pref": "all" if str(p.get("benzinga_language_pref", "english")).lower() == "all" else "english",
         "finnhub_enabled": bool(p.get("finnhub_enabled")),
         "finnhub_poll_seconds": max(15.0, min(float(p.get("finnhub_poll_seconds",30)), 300.0)),
         "alphavantage_enabled": bool(p.get("alphavantage_enabled")),
@@ -72,6 +75,7 @@ def api_save_setup():
         "sec_user_agent": str(p.get("sec_user_agent","")).strip(),
         "poll_seconds": max(1.0, min(float(p.get("poll_seconds",2)), 60.0)),
         "feed_limit": max(25, min(int(p.get("feed_limit",250)), 500)),
+        "openai_model": str(p.get("openai_model", "gpt-5.6-luna")).strip() or "gpt-5.6-luna",
     }
     for form_name, cfg_name in (
         ("benzinga_api_key", "benzinga_api_key"),
@@ -81,6 +85,9 @@ def api_save_setup():
         key = str(p.get(form_name,"")).strip()
         if key:
             updates[cfg_name] = key
+    ai_key = str(p.get("openai_api_key", "")).strip()
+    if ai_key:
+        updates["openai_api_key"] = ai_key
     save_config(updates)
     trim_feed()
     manager.restart()
@@ -167,6 +174,54 @@ def test_sec():
         return jsonify(ok=False, message=f"SEC returned HTTP {r.status_code}"), 400
     except Exception as e:
         return jsonify(ok=False, message=f"{type(e).__name__}: {e}"), 400
+
+
+@app.get("/api/thesis/<evidence_id>")
+def api_get_thesis(evidence_id):
+    cached = get_cached(evidence_id)
+    if not cached:
+        return jsonify(ok=False, message="No cached thesis"), 404
+    return jsonify(ok=True, receipt=cached)
+
+@app.post("/api/thesis/<evidence_id>")
+def api_analyze_thesis(evidence_id):
+    event = get_event(evidence_id)
+    if not event:
+        return jsonify(ok=False, message="Story is no longer on the live board"), 404
+    force = bool((request.get_json(silent=True) or {}).get("force"))
+    try:
+        receipt = analyze_event(event, force=force)
+        return jsonify(ok=True, receipt=receipt)
+    except Exception as e:
+        return jsonify(ok=False, message=f"{type(e).__name__}: {e}"), 400
+
+@app.post("/api/thesis/<evidence_id>/report")
+def api_save_thesis_report(evidence_id):
+    receipt = get_cached(evidence_id)
+    if not receipt:
+        return jsonify(ok=False, message="Analyze the story before saving a report"), 404
+    try:
+        report = save_report(receipt)
+        return jsonify(ok=True, report=report)
+    except Exception as e:
+        return jsonify(ok=False, message=f"Report save failed: {type(e).__name__}: {e}"), 400
+
+@app.get("/api/reports")
+def api_reports():
+    return jsonify(ok=True, reports=list_reports(request.args.get("limit", 20)))
+
+@app.get("/api/reports/<name>/<fmt>")
+def api_report_download(name, fmt):
+    p = find_report(name, fmt.lower())
+    if not p or not p.exists():
+        return jsonify(ok=False, message="Report artifact not found"), 404
+    return send_file(p, as_attachment=True, download_name=p.name)
+
+@app.delete("/api/reports/<name>")
+def api_report_delete(name):
+    if not delete_report(name):
+        return jsonify(ok=False, message="Report not found"), 404
+    return jsonify(ok=True)
 
 @app.get("/api/evidence/download")
 def evidence_download():

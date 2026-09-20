@@ -18,21 +18,24 @@ PY
 SRC="$(find "$TMP" -type f -name VERSION -print -quit | xargs -r dirname)"
 [ -n "$SRC" ] && [ -f "$SRC/run.py" ] || { echo "Invalid NewsHound package"; exit 2; }
 mkdir -p "$APP_HOME/backups/$STAMP"
-for p in newshound run.py requirements.txt VERSION install.sh upgrade-to-1.0.sh README.md; do
+for p in newshound run.py requirements.txt VERSION install.sh upgrade-to-1.0.sh README.md HOWTO.md LICENSE RELEASE-NOTES-1.3-hf14.md; do
   [ -e "$APP_HOME/$p" ] && cp -a "$APP_HOME/$p" "$APP_HOME/backups/$STAMP/" || true
 done
-# Persistent directories are intentionally untouched: config data logs backups venv
+# Persistent directories are intentionally untouched: config data logs backups reports venv
 rm -rf "$APP_HOME/newshound"
 cp -a "$SRC/newshound" "$APP_HOME/"
-for p in run.py requirements.txt VERSION install.sh upgrade-to-1.0.sh README.md; do
+for p in run.py requirements.txt VERSION install.sh upgrade-to-1.0.sh README.md HOWTO.md LICENSE RELEASE-NOTES-1.3-hf14.md; do
   [ -e "$SRC/$p" ] && cp -a "$SRC/$p" "$APP_HOME/"
 done
 chmod +x "$APP_HOME/install.sh" "$APP_HOME/upgrade-to-1.0.sh"
-"$APP_HOME/venv/bin/pip" install -r "$APP_HOME/requirements.txt" >>"$APP_HOME/logs/update.log" 2>&1
+VENV="$APP_HOME/.venv"
+[ -x "$VENV/bin/pip" ] || VENV="$APP_HOME/venv"
+[ -x "$VENV/bin/pip" ] || { echo "No NewsHound virtual environment found (.venv or venv)"; exit 3; }
+"$VENV/bin/pip" install -r "$APP_HOME/requirements.txt" >>"$APP_HOME/logs/update.log" 2>&1
 echo "[$(date -Is)] Installed NewsHound $(cat "$APP_HOME/VERSION") backup=$STAMP" >>"$APP_HOME/logs/update.log"
 # Parent Flask service will continue until systemd restart; ask systemd via parent termination fallback.
 if command -v systemctl >/dev/null 2>&1; then
-  sudo -n systemctl restart newshound 2>/dev/null || pkill -TERM -f "$APP_HOME/run.py" || true
+  sudo -n systemctl restart wolfpack-newshound 2>/dev/null || sudo -n systemctl restart newshound 2>/dev/null || pkill -TERM -f "$APP_HOME/run.py" || true
 else
   pkill -TERM -f "$APP_HOME/run.py" || true
 fi

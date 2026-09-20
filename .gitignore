@@ -23,3 +23,13 @@ config/config.json
 .idea/
 .DS_Store
 Thumbs.db
+
+# Finished intelligence / operator-generated artifacts
+reports/
+
+# Local credentials
+credentials.json
+
+# Additional runtime artifacts
+*.log
+*.bak

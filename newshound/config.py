@@ -11,6 +11,7 @@ CONFIG_FILE = CONFIG_DIR / "config.json"
 DEFAULTS = {
     "benzinga_enabled": False,
     "benzinga_api_key": "",
+    "benzinga_language_pref": "english",
         "finnhub_enabled": False,
     "finnhub_api_key": "",
         "finnhub_poll_seconds": 30.0,
@@ -18,10 +19,12 @@ DEFAULTS = {
     "alphavantage_api_key": "",
         "alphavantage_poll_minutes": 60.0,
     "sec_enabled": True,
-        "sec_user_agent": "NewsHound/1.3-hf5 admin@example.com",
+        "sec_user_agent": "NewsHound/1.3-hf11 admin@example.com",
     "poll_seconds": 2.0,
     "feed_limit": 250,
-    "watch_tickers": ""
+    "watch_tickers": "",
+    "openai_api_key": "",
+    "openai_model": "gpt-5.6-luna"
 }
 
 def ensure_dirs():
@@ -64,6 +67,7 @@ def public_config():
         "watch_tickers": cfg.get("watch_tickers", ""),
         "benzinga_enabled": bool(cfg.get("benzinga_enabled")),
         "benzinga_key_set": bool(cfg.get("benzinga_api_key")),
+        "benzinga_language_pref": str(cfg.get("benzinga_language_pref", "english") or "english").lower(),
         "finnhub_enabled": bool(cfg.get("finnhub_enabled")),
         "finnhub_key_set": bool(cfg.get("finnhub_api_key")),
         "finnhub_poll_seconds": cfg.get("finnhub_poll_seconds", 30.0),
@@ -74,4 +78,6 @@ def public_config():
         "sec_user_agent": cfg.get("sec_user_agent", ""),
         "poll_seconds": cfg.get("poll_seconds", 2.0),
         "feed_limit": cfg.get("feed_limit", 250),
+        "openai_key_set": bool(cfg.get("openai_api_key") or os.environ.get("OPENAI_API_KEY")),
+        "openai_model": cfg.get("openai_model", "gpt-5.6-luna"),
     }
